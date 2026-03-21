@@ -1,12 +1,13 @@
 <?php
-// Database credentials
-$host = 'db';
-$user = 'jerouser';
-$pass = 'jero123';
-$db   = 'jerodb';
+// Get Database credentials from Vercel Environment Variables
+$host = getenv('DB_HOST');
+$user = getenv('DB_USER');
+$pass = getenv('DB_PASS');
+$db   = getenv('DB_NAME');
+$port = getenv('DB_PORT') ? getenv('DB_PORT') : 3306;
 
 // Create connection
-$conn = new mysqli($host, $user, $pass, $db);
+$conn = new mysqli($host, $user, $pass, $db, $port);
 
 // Check connection
 if ($conn->connect_error) {
