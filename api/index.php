@@ -1,22 +1,26 @@
 <?php
-// Get Database credentials from Vercel Environment Variables
-$host = getenv('DB_HOST');
-$user = getenv('DB_USER');
-$pass = getenv('DB_PASS');
-$db   = getenv('DB_NAME');
-$port = getenv('DB_PORT') ? getenv('DB_PORT') : 3306;
+// 1. SECURE DATABASE CONNECTION (With Aiven SSL & DNS Fixes)
+$host = trim((string)getenv('DB_HOST'));
+$user = trim((string)getenv('DB_USER'));
+$pass = trim((string)getenv('DB_PASS'));
+$db   = trim((string)getenv('DB_NAME'));
+$port = trim((string)getenv('DB_PORT')) ? trim((string)getenv('DB_PORT')) : 10333;
 
-// Create connection
-$conn = new mysqli($host, $user, $pass, $db, $port);
+// Strip out 'http://' or spaces if accidentally copied into Vercel
+$host = preg_replace('#^https?://#', '', $host);
+
+// Initialize secure SSL connection required by Aiven
+$conn = mysqli_init();
+$conn->ssl_set(NULL, NULL, NULL, NULL, NULL);
+$conn->real_connect($host, $user, $pass, $db, $port, NULL, MYSQLI_CLIENT_SSL);
 
 // Check connection
 if ($conn->connect_error) {
-    die("Connection failed: " . $conn->connect_error);
+    die("Database Connection failed: " . $conn->connect_error . " | Please check Vercel Environment Variables.");
 }
 
-// --- AUTOMATIC SETUP: Create Tables ---
-
-// 1. Team Members Table Setup (Roles Removed)
+// 2. AUTOMATIC SETUP: Create Tables
+// Team Members Table
 $table_check = $conn->query("SHOW TABLES LIKE 'neighbours_team'");
 if ($table_check->num_rows == 0) {
     $create_table = "CREATE TABLE neighbours_team (
@@ -41,7 +45,7 @@ if ($table_check->num_rows == 0) {
     $conn->query($insert_data);
 }
 
-// 2. Emergency Reports Table Setup
+// Emergency Reports Table
 $msg_table_check = $conn->query("SHOW TABLES LIKE 'emergency_reports'");
 if ($msg_table_check->num_rows == 0) {
     $create_msg_table = "CREATE TABLE emergency_reports (
@@ -56,16 +60,14 @@ if ($msg_table_check->num_rows == 0) {
     $conn->query($create_msg_table);
 }
 
-// --- FORM PROCESSING LOGIC ---
+// 3. FORM PROCESSING LOGIC
 $alert_message = "";
 if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['submit_emergency'])) {
-    // Sanitize inputs
     $name = $conn->real_escape_string($_POST['reporter_name']);
     $type = $conn->real_escape_string($_POST['emergency_type']);
     $location = $conn->real_escape_string($_POST['location']);
     $description = $conn->real_escape_string($_POST['description']);
 
-    // Insert into database
     $insert_sql = "INSERT INTO emergency_reports (reporter_name, emergency_type, location, description, status) 
                    VALUES ('$name', '$type', '$location', '$description', 'Unread')";
     
@@ -76,7 +78,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['submit_emergency'])) {
     }
 }
 
-// Check which page the user clicked on (default is 'home')
+// Page Routing
 $page = isset($_GET['page']) ? $_GET['page'] : 'home';
 ?>
 
@@ -98,6 +100,7 @@ $page = isset($_GET['page']) ? $_GET['page'] : 'home';
         /* Container and Card Styling */
         .container { padding: 40px 20px; max-width: 1000px; margin: auto; }
         .card { background-color: white; padding: 30px; border-radius: 10px; box-shadow: 0 4px 15px rgba(153, 27, 27, 0.08); margin-bottom: 30px; border-top: 5px solid #dc2626; }
+        .card.team-card { border-top: 5px solid #4a5568; background-color: #f7fafc; } /* Distinct look for the team section at bottom */
         
         h1 { color: #7f1d1d; margin-top: 0; border-bottom: 2px solid #fecaca; padding-bottom: 10px; }
         h2 { color: #991b1b; }
@@ -105,10 +108,15 @@ $page = isset($_GET['page']) ? $_GET['page'] : 'home';
         
         /* Table Styling */
         table { width: 100%; margin-top: 20px; border-collapse: collapse; border-radius: 8px; overflow: hidden; }
-        th, td { border-bottom: 1px solid #fecaca; text-align: left; padding: 15px; }
-        th { background-color: #dc2626; color: white; font-weight: 600; text-transform: uppercase; font-size: 14px; }
+        th, td { border-bottom: 1px solid #fecaca; text-align: left; padding: 12px 15px; }
+        th { background-color: #dc2626; color: white; font-weight: 600; text-transform: uppercase; font-size: 13px; }
         tr:hover { background-color: #fef2f2; }
         
+        /* Specific Table Styling for Team Footer */
+        .team-table th { background-color: #4a5568; }
+        .team-table tr:hover { background-color: #edf2f7; }
+        .team-table td { border-bottom: 1px solid #e2e8f0; }
+
         /* Badges for Status */
         .badge { padding: 6px 12px; border-radius: 20px; font-size: 12px; font-weight: bold; text-transform: uppercase; }
         .badge-unread { background-color: #fee2e2; color: #b91c1c; border: 1px solid #fca5a5; }
@@ -128,6 +136,8 @@ $page = isset($_GET['page']) ? $_GET['page'] : 'home';
         .alert { padding: 15px; border-radius: 6px; margin-bottom: 20px; }
         .alert.success { background-color: #fef2f2; color: #991b1b; border: 2px solid #fca5a5; }
         .alert.error { background-color: #fff5f5; color: #c53030; border: 2px solid #feb2b2; }
+        
+        hr.divider { border: 0; height: 1px; background: #cbd5e0; margin: 40px 0; }
     </style>
 </head>
 <body>
@@ -135,7 +145,6 @@ $page = isset($_GET['page']) ? $_GET['page'] : 'home';
     <div class="navbar">
         <a href="?page=home" class="<?php echo $page == 'home' ? 'active' : ''; ?>">🚨 Report Emergency</a>
         <a href="?page=feed" class="<?php echo $page == 'feed' ? 'active' : ''; ?>">📡 Live Emergency Feed</a>
-        <a href="?page=team" class="<?php echo $page == 'team' ? 'active' : ''; ?>">🛡️ Response Team</a>
     </div>
 
     <div class="container">
@@ -225,39 +234,39 @@ $page = isset($_GET['page']) ? $_GET['page'] : 'home';
                     ?>
                 </table>
             </div>
-
-        <?php elseif ($page == 'team'): ?>
-            <div class="card">
-                <h1>Response Team Roster</h1>
-                <p>The following individuals are registered in the Neighbour's Call network system database.</p>
-                <table>
-                    <tr>
-                        <th>#</th>
-                        <th>MEMBER NAME</th>
-                        <th>REGISTRATION NUMBER</th>
-                        <th>STUDENT NUMBER</th>
-                    </tr>
-                    <?php
-                    $sql = "SELECT * FROM neighbours_team";
-                    $result = $conn->query($sql);
-
-                    if ($result->num_rows > 0) {
-                        while($row = $result->fetch_assoc()) {
-                            echo "<tr>
-                                    <td>" . $row["id"]. "</td>
-                                    <td style='color: #991b1b;'><strong>" . htmlspecialchars($row["name"]). "</strong></td>
-                                    <td>" . htmlspecialchars($row["reg_number"]). "</td>
-                                    <td>" . htmlspecialchars($row["student_number"]). "</td>
-                                  </tr>";
-                        }
-                    } else {
-                        echo "<tr><td colspan='4'>No team members found</td></tr>";
-                    }
-                    ?>
-                </table>
-            </div>
-
         <?php endif; ?>
+
+        <hr class="divider">
+
+        <div class="card team-card">
+            <h2 style="color: #2d3748; margin-top: 0;">🛡️ System Architects & Response Team</h2>
+            <p style="font-size: 14px;">The following individuals developed and maintain the Neighbour's Call network infrastructure.</p>
+            <table class="team-table">
+                <tr>
+                    <th>#</th>
+                    <th>MEMBER NAME</th>
+                    <th>REGISTRATION NUMBER</th>
+                    <th>STUDENT NUMBER</th>
+                </tr>
+                <?php
+                $sql = "SELECT * FROM neighbours_team";
+                $result = $conn->query($sql);
+
+                if ($result->num_rows > 0) {
+                    while($row = $result->fetch_assoc()) {
+                        echo "<tr>
+                                <td>" . $row["id"]. "</td>
+                                <td style='color: #2d3748;'><strong>" . htmlspecialchars($row["name"]). "</strong></td>
+                                <td>" . htmlspecialchars($row["reg_number"]). "</td>
+                                <td>" . htmlspecialchars($row["student_number"]). "</td>
+                              </tr>";
+                    }
+                } else {
+                    echo "<tr><td colspan='4'>No team members found</td></tr>";
+                }
+                ?>
+            </table>
+        </div>
 
     </div>
 
