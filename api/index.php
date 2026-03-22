@@ -86,6 +86,7 @@ $page = isset($_GET['page']) ? $_GET['page'] : 'home';
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Neighbour's Call | Emergency Network</title>
     <style>
         /* General Styling - Red Theme */
@@ -100,22 +101,78 @@ $page = isset($_GET['page']) ? $_GET['page'] : 'home';
         /* Container and Card Styling */
         .container { padding: 40px 20px; max-width: 1000px; margin: auto; }
         .card { background-color: white; padding: 30px; border-radius: 10px; box-shadow: 0 4px 15px rgba(153, 27, 27, 0.08); margin-bottom: 30px; border-top: 5px solid #dc2626; }
-        .card.team-card { border-top: 5px solid #4a5568; background-color: #f7fafc; } /* Distinct look for the team section at bottom */
+        
+        /* Specifically style the team container differently */
+        .team-card { border-top: 5px solid #1e293b; background-color: #f8fafc; } 
         
         h1 { color: #7f1d1d; margin-top: 0; border-bottom: 2px solid #fecaca; padding-bottom: 10px; }
         h2 { color: #991b1b; }
         p { line-height: 1.8; color: #4a5568; font-size: 16px; }
         
-        /* Table Styling */
+        /* Table Styling (Only for the Live Feed now) */
         table { width: 100%; margin-top: 20px; border-collapse: collapse; border-radius: 8px; overflow: hidden; }
         th, td { border-bottom: 1px solid #fecaca; text-align: left; padding: 12px 15px; }
         th { background-color: #dc2626; color: white; font-weight: 600; text-transform: uppercase; font-size: 13px; }
         tr:hover { background-color: #fef2f2; }
+
+        /* --- NEW TEAM GRID STYLING --- */
+        .team-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 20px;
+            margin-top: 25px;
+        }
         
-        /* Specific Table Styling for Team Footer */
-        .team-table th { background-color: #4a5568; }
-        .team-table tr:hover { background-color: #edf2f7; }
-        .team-table td { border-bottom: 1px solid #e2e8f0; }
+        .team-member {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+            border: 1px solid #e2e8f0;
+            border-left: 5px solid #7f1d1d;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            position: relative;
+        }
+
+        .team-member:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 15px rgba(127, 29, 29, 0.15);
+            border-left: 5px solid #dc2626;
+        }
+
+        .member-icon {
+            font-size: 24px;
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            opacity: 0.2;
+        }
+
+        .member-name {
+            font-size: 17px;
+            font-weight: 700;
+            color: #1e293b;
+            margin-bottom: 12px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid #f1f5f9;
+            padding-right: 30px; /* space for icon */
+        }
+
+        .member-detail {
+            font-size: 13px;
+            color: #64748b;
+            margin-bottom: 6px;
+            display: flex;
+            align-items: center;
+        }
+
+        .member-detail span {
+            font-weight: 600;
+            color: #475569;
+            width: 70px;
+            display: inline-block;
+        }
+        /* ----------------------------- */
 
         /* Badges for Status */
         .badge { padding: 6px 12px; border-radius: 20px; font-size: 12px; font-weight: bold; text-transform: uppercase; }
@@ -239,33 +296,28 @@ $page = isset($_GET['page']) ? $_GET['page'] : 'home';
         <hr class="divider">
 
         <div class="card team-card">
-            <h2 style="color: #2d3748; margin-top: 0;">🛡️ System Architects & Response Team</h2>
-            <p style="font-size: 14px;">The following individuals developed and maintain the Neighbour's Call network infrastructure.</p>
-            <table class="team-table">
-                <tr>
-                    <th>#</th>
-                    <th>MEMBER NAME</th>
-                    <th>REGISTRATION NUMBER</th>
-                    <th>STUDENT NUMBER</th>
-                </tr>
+            <h2 style="color: #1e293b; margin-top: 0;">🛡️ System Architects & Response Team</h2>
+            <p style="font-size: 15px; margin-bottom: 0;">The following developers designed and maintain the Neighbour's Call network infrastructure.</p>
+            
+            <div class="team-grid">
                 <?php
                 $sql = "SELECT * FROM neighbours_team";
                 $result = $conn->query($sql);
 
                 if ($result->num_rows > 0) {
                     while($row = $result->fetch_assoc()) {
-                        echo "<tr>
-                                <td>" . $row["id"]. "</td>
-                                <td style='color: #2d3748;'><strong>" . htmlspecialchars($row["name"]). "</strong></td>
-                                <td>" . htmlspecialchars($row["reg_number"]). "</td>
-                                <td>" . htmlspecialchars($row["student_number"]). "</td>
-                              </tr>";
+                        echo "<div class='team-member'>
+                                <div class='member-icon'>👤</div>
+                                <div class='member-name'>" . htmlspecialchars($row["name"]) . "</div>
+                                <div class='member-detail'><span>Reg:</span> " . htmlspecialchars($row["reg_number"]) . "</div>
+                                <div class='member-detail'><span>Std No:</span> " . htmlspecialchars($row["student_number"]) . "</div>
+                              </div>";
                     }
                 } else {
-                    echo "<tr><td colspan='4'>No team members found</td></tr>";
+                    echo "<p style='color: #ef4444;'>No team members found in the database.</p>";
                 }
                 ?>
-            </table>
+            </div>
         </div>
 
     </div>
