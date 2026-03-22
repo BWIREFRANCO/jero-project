@@ -16,40 +16,41 @@ if ($conn->connect_error) {
 
 // --- AUTOMATIC SETUP: Create Tables ---
 
-// 1. Members Table Setup
-$table_check = $conn->query("SHOW TABLES LIKE 'group_members_v2'");
+// 1. Team Members Table Setup (Roles Removed)
+$table_check = $conn->query("SHOW TABLES LIKE 'neighbours_team'");
 if ($table_check->num_rows == 0) {
-    $create_table = "CREATE TABLE group_members_v2 (
+    $create_table = "CREATE TABLE neighbours_team (
         id INT(6) UNSIGNED AUTO_INCREMENT PRIMARY KEY,
         name VARCHAR(100) NOT NULL,
         reg_number VARCHAR(50) NOT NULL,
-        student_number VARCHAR(50) NOT NULL,
-        role VARCHAR(50) NOT NULL
+        student_number VARCHAR(50) NOT NULL
     )";
     $conn->query($create_table);
 
-    $insert_data = "INSERT INTO group_members_v2 (name, reg_number, student_number, role) VALUES 
-        ('MBABAZI JOROME', '23/U/0759', '2300700759', 'Project Manager'),
-        ('BWIRE FRANCO', '23/U/07833/EVE', '2300707833', 'DevOps Engineer'),
-        ('TUHIMBISE DICKENS AMON', '23/U/18027/PS', '2300718027', 'Lead Developer'),
-        ('NAMYENYA JENNIFER', '23/U/15000/EVE', '2300715000', 'UI/UX Designer'),
-        ('NAMATOVU SARAH', '23/U/23731', '2300723731', 'Frontend Developer'),
-        ('KATAMBA ESTHER NANCY', '23/U/09221/PS', '2300709221', 'Backend Developer'),
-        ('BATAMULIZA HADIJAH', '23/U/07467/PS', '2300707467', 'Database Administrator'),
-        ('LAMAJI JESSICA JOANITA', '23/U/0681', '2300700681', 'QA Tester'),
-        ('ASIIMWE JOSHUA', '23/U/00674/EVE', '2300706674', 'Systems Analyst'),
-        ('KISAKYE MARTHA', '23/U/10021/EVE', '2300710021', 'Technical Writer')";
+    $insert_data = "INSERT INTO neighbours_team (name, reg_number, student_number) VALUES 
+        ('MBABAZI JOROME', '23/U/0759', '2300700759'),
+        ('BWIRE FRANCO', '23/U/07833/EVE', '2300707833'),
+        ('TUHIMBISE DICKENS AMON', '23/U/18027/PS', '2300718027'),
+        ('NAMYENYA JENNIFER', '23/U/15000/EVE', '2300715000'),
+        ('NAMATOVU SARAH', '23/U/23731', '2300723731'),
+        ('KATAMBA ESTHER NANCY', '23/U/09221/PS', '2300709221'),
+        ('BATAMULIZA HADIJAH', '23/U/07467/PS', '2300707467'),
+        ('LAMAJI JESSICA JOANITA', '23/U/0681', '2300700681'),
+        ('ASIIMWE JOSHUA', '23/U/00674/EVE', '2300706674'),
+        ('KISAKYE MARTHA', '23/U/10021/EVE', '2300710021')";
     $conn->query($insert_data);
 }
 
-// 2. Contact Messages Table Setup
-$msg_table_check = $conn->query("SHOW TABLES LIKE 'contact_messages'");
+// 2. Emergency Reports Table Setup
+$msg_table_check = $conn->query("SHOW TABLES LIKE 'emergency_reports'");
 if ($msg_table_check->num_rows == 0) {
-    $create_msg_table = "CREATE TABLE contact_messages (
+    $create_msg_table = "CREATE TABLE emergency_reports (
         id INT(6) UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-        name VARCHAR(100) NOT NULL,
-        email VARCHAR(100) NOT NULL,
-        message TEXT NOT NULL,
+        reporter_name VARCHAR(100) NOT NULL,
+        emergency_type VARCHAR(50) NOT NULL,
+        location VARCHAR(150) NOT NULL,
+        description TEXT NOT NULL,
+        status VARCHAR(20) DEFAULT 'Unread',
         submit_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )";
     $conn->query($create_msg_table);
@@ -57,19 +58,21 @@ if ($msg_table_check->num_rows == 0) {
 
 // --- FORM PROCESSING LOGIC ---
 $alert_message = "";
-if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['submit_contact'])) {
-    // Sanitize inputs to prevent SQL errors
-    $name = $conn->real_escape_string($_POST['name']);
-    $email = $conn->real_escape_string($_POST['email']);
-    $message = $conn->real_escape_string($_POST['message']);
+if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['submit_emergency'])) {
+    // Sanitize inputs
+    $name = $conn->real_escape_string($_POST['reporter_name']);
+    $type = $conn->real_escape_string($_POST['emergency_type']);
+    $location = $conn->real_escape_string($_POST['location']);
+    $description = $conn->real_escape_string($_POST['description']);
 
     // Insert into database
-    $insert_sql = "INSERT INTO contact_messages (name, email, message) VALUES ('$name', '$email', '$message')";
+    $insert_sql = "INSERT INTO emergency_reports (reporter_name, emergency_type, location, description, status) 
+                   VALUES ('$name', '$type', '$location', '$description', 'Unread')";
     
     if ($conn->query($insert_sql) === TRUE) {
-        $alert_message = "<div class='alert'>✅ Success! <strong>" . htmlspecialchars($name) . "</strong>, your message has been securely saved to the database.</div>";
+        $alert_message = "<div class='alert success'>🚨 <strong>URGENT ALERT SENT:</strong> " . htmlspecialchars($name) . ", your emergency has been recorded. Stay calm, help is being notified.</div>";
     } else {
-        $alert_message = "<div class='alert' style='background-color: #fed7d7; color: #9b2c2c; border-color: #feb2b2;'>❌ Database Error: " . $conn->error . "</div>";
+        $alert_message = "<div class='alert error'>❌ System Error: " . $conn->error . "</div>";
     }
 }
 
@@ -81,149 +84,174 @@ $page = isset($_GET['page']) ? $_GET['page'] : 'home';
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Jero's Group Project</title>
+    <title>Neighbour's Call | Emergency Network</title>
     <style>
-        /* General Styling */
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #eef2f5; margin: 0; padding: 0; color: #333; }
+        /* General Styling - Red Theme */
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #fef2f2; margin: 0; padding: 0; color: #333; }
         
         /* Navbar Styling */
-        .navbar { background-color: #1a365d; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.1); position: sticky; top: 0; z-index: 100; }
-        .navbar a { float: left; display: block; color: #e2e8f0; text-align: center; padding: 16px 24px; text-decoration: none; font-size: 16px; font-weight: 600; transition: 0.3s; }
-        .navbar a:hover { background-color: #2b6cb0; color: white; }
-        .navbar a.active { background-color: #2b6cb0; color: white; border-bottom: 4px solid #f6ad55; }
+        .navbar { background-color: #7f1d1d; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.1); position: sticky; top: 0; z-index: 100; border-bottom: 3px solid #b91c1c; }
+        .navbar a { float: left; display: block; color: #fee2e2; text-align: center; padding: 16px 24px; text-decoration: none; font-size: 16px; font-weight: 600; transition: 0.3s; }
+        .navbar a:hover { background-color: #991b1b; color: white; }
+        .navbar a.active { background-color: #b91c1c; color: white; border-bottom: 4px solid #fca5a5; }
         
         /* Container and Card Styling */
         .container { padding: 40px 20px; max-width: 1000px; margin: auto; }
-        .card { background-color: white; padding: 30px; border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); margin-bottom: 30px; }
+        .card { background-color: white; padding: 30px; border-radius: 10px; box-shadow: 0 4px 15px rgba(153, 27, 27, 0.08); margin-bottom: 30px; border-top: 5px solid #dc2626; }
         
-        h1 { color: #1a365d; margin-top: 0; border-bottom: 2px solid #e2e8f0; padding-bottom: 10px; }
-        h2 { color: #2d3748; }
+        h1 { color: #7f1d1d; margin-top: 0; border-bottom: 2px solid #fecaca; padding-bottom: 10px; }
+        h2 { color: #991b1b; }
         p { line-height: 1.8; color: #4a5568; font-size: 16px; }
-        ul { line-height: 1.8; color: #4a5568; }
-        li { margin-bottom: 10px; }
         
         /* Table Styling */
         table { width: 100%; margin-top: 20px; border-collapse: collapse; border-radius: 8px; overflow: hidden; }
-        th, td { border-bottom: 1px solid #e2e8f0; text-align: left; padding: 15px; }
-        th { background-color: #2b6cb0; color: white; font-weight: 600; text-transform: uppercase; font-size: 14px; }
-        tr:hover { background-color: #f7fafc; }
-        .role-badge { background-color: #edf2f7; padding: 6px 12px; border-radius: 20px; font-size: 13px; color: #2b6cb0; font-weight: bold; border: 1px solid #e2e8f0; }
+        th, td { border-bottom: 1px solid #fecaca; text-align: left; padding: 15px; }
+        th { background-color: #dc2626; color: white; font-weight: 600; text-transform: uppercase; font-size: 14px; }
+        tr:hover { background-color: #fef2f2; }
         
+        /* Badges for Status */
+        .badge { padding: 6px 12px; border-radius: 20px; font-size: 12px; font-weight: bold; text-transform: uppercase; }
+        .badge-unread { background-color: #fee2e2; color: #b91c1c; border: 1px solid #fca5a5; }
+        .badge-read { background-color: #e2e8f0; color: #4a5568; border: 1px solid #cbd5e0; }
+        .badge-pinned { background-color: #fef3c7; color: #b45309; border: 1px solid #fcd34d; }
+        .badge-type { background-color: #7f1d1d; color: white; }
+
         /* Form Styling */
         .form-group { margin-bottom: 20px; }
-        label { display: block; font-weight: bold; margin-bottom: 8px; color: #4a5568; }
-        input[type="text"], input[type="email"], textarea { width: 100%; padding: 12px; border: 1px solid #cbd5e0; border-radius: 6px; box-sizing: border-box; font-family: inherit; font-size: 15px; }
-        input[type="text"]:focus, input[type="email"]:focus, textarea:focus { outline: none; border-color: #2b6cb0; box-shadow: 0 0 0 3px rgba(43, 108, 176, 0.2); }
-        button { background-color: #2b6cb0; color: white; padding: 12px 24px; border: none; border-radius: 6px; cursor: pointer; font-size: 16px; font-weight: bold; transition: 0.3s; }
-        button:hover { background-color: #1a365d; }
+        label { display: block; font-weight: bold; margin-bottom: 8px; color: #7f1d1d; }
+        input[type="text"], select, textarea { width: 100%; padding: 12px; border: 2px solid #fecaca; border-radius: 6px; box-sizing: border-box; font-family: inherit; font-size: 15px; background-color: #fffafb;}
+        input[type="text"]:focus, select:focus, textarea:focus { outline: none; border-color: #dc2626; box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.2); }
+        button { background-color: #dc2626; color: white; padding: 14px 28px; border: none; border-radius: 6px; cursor: pointer; font-size: 16px; font-weight: bold; text-transform: uppercase; transition: 0.3s; width: 100%; }
+        button:hover { background-color: #991b1b; }
         
         /* Alert Message */
-        .alert { padding: 15px; background-color: #c6f6d5; color: #22543d; border-radius: 6px; margin-bottom: 20px; border: 1px solid #9ae6b4; }
+        .alert { padding: 15px; border-radius: 6px; margin-bottom: 20px; }
+        .alert.success { background-color: #fef2f2; color: #991b1b; border: 2px solid #fca5a5; }
+        .alert.error { background-color: #fff5f5; color: #c53030; border: 2px solid #feb2b2; }
     </style>
 </head>
 <body>
 
     <div class="navbar">
-        <a href="?page=home" class="<?php echo $page == 'home' ? 'active' : ''; ?>">Home</a>
-        <a href="?page=members" class="<?php echo $page == 'members' ? 'active' : ''; ?>">Group Members</a>
-        <a href="?page=messages" class="<?php echo $page == 'messages' ? 'active' : ''; ?>">View Messages</a>
+        <a href="?page=home" class="<?php echo $page == 'home' ? 'active' : ''; ?>">🚨 Report Emergency</a>
+        <a href="?page=feed" class="<?php echo $page == 'feed' ? 'active' : ''; ?>">📡 Live Emergency Feed</a>
+        <a href="?page=team" class="<?php echo $page == 'team' ? 'active' : ''; ?>">🛡️ Response Team</a>
     </div>
 
     <div class="container">
         
         <?php if ($page == 'home'): ?>
             <div class="card">
-                <h1>Welcome to Jero's Group Project</h1>
-                <p>This project demonstrates a fully containerized web application infrastructure. The architecture utilizes several industry-standard technologies working together seamlessly:</p>
-                <ul>
-                    <li><strong>Docker:</strong> Used to containerize the application, ensuring a consistent environment. We built a custom multi-container setup using Docker Compose.</li>
-                    <li><strong>Apache Server & PHP:</strong> The backend is powered by a custom Debian-based Apache web server image with the PHP 8.2 module installed, serving dynamic content.</li>
-                    <li><strong>MySQL Database:</strong> A dedicated database container securely stores our project data, which is fetched dynamically via PHP.</li>
-                    <li><strong>Bind9 DNS Server:</strong> A local Domain Name System was configured using Bind9 to map our application to a custom domain (<code>jero.com</code>), bypassing standard localhost routing.</li>
-                </ul>
+                <h1>Neighbour's Call</h1>
+                <p>Welcome to the <strong>Neighbour's Call</strong> rapid response network. If you or someone near you is in danger, experiencing a medical crisis, or witnessing a security threat, please log the incident immediately below. Our system tracks and broadcasts emergencies to local responders.</p>
             </div>
 
             <div class="card">
-                <h2>Contact Us</h2>
+                <h2>Submit an Emergency Report</h2>
                 
                 <?php echo $alert_message; ?>
 
                 <form method="POST" action="?page=home">
                     <div class="form-group">
-                        <label for="name">Your Name</label>
-                        <input type="text" id="name" name="name" placeholder="John Doe" required>
+                        <label for="reporter_name">Your Name (or Anonymous)</label>
+                        <input type="text" id="reporter_name" name="reporter_name" placeholder="E.g. John Doe or 'Concerned Neighbour'" required>
                     </div>
+                    
                     <div class="form-group">
-                        <label for="email">Email Address</label>
-                        <input type="email" id="email" name="email" placeholder="john@example.com" required>
+                        <label for="emergency_type">Type of Emergency</label>
+                        <select id="emergency_type" name="emergency_type" required>
+                            <option value="" disabled selected>Select the emergency category...</option>
+                            <option value="Medical Emergency">🚑 Medical Emergency</option>
+                            <option value="Fire / Hazard">🔥 Fire / Hazard</option>
+                            <option value="Crime / Security">🚔 Crime / Security Incident</option>
+                            <option value="Accident / Crash">💥 Accident / Crash</option>
+                            <option value="Suspicious Activity">👁️ Suspicious Activity</option>
+                            <option value="Other">⚠️ Other</option>
+                        </select>
                     </div>
+
                     <div class="form-group">
-                        <label for="message">Message</label>
-                        <textarea id="message" name="message" rows="5" placeholder="Write your message here..." required></textarea>
+                        <label for="location">Exact Location</label>
+                        <input type="text" id="location" name="location" placeholder="E.g. Building 4, Floor 2, Main Campus" required>
                     </div>
-                    <button type="submit" name="submit_contact">Send Message</button>
+
+                    <div class="form-group">
+                        <label for="description">Emergency Details (Please be specific)</label>
+                        <textarea id="description" name="description" rows="5" placeholder="Describe what is happening, who is involved, and what help is needed..." required></textarea>
+                    </div>
+                    
+                    <button type="submit" name="submit_emergency">🚨 BROADCAST EMERGENCY</button>
                 </form>
             </div>
         
-        <?php elseif ($page == 'members'): ?>
+        <?php elseif ($page == 'feed'): ?>
             <div class="card">
-                <h1>Group Members & Roles</h1>
+                <h1>Live Emergency Feed</h1>
+                <p>Tracked emergencies in the local area. Dispatchers will update the status of these tickets as they are reviewed and resolved.</p>
+                <table>
+                    <tr>
+                        <th>Status</th>
+                        <th>Type & Location</th>
+                        <th>Reporter</th>
+                        <th>Details</th>
+                        <th>Time</th>
+                    </tr>
+                    <?php
+                    // Fetch emergencies from newest to oldest
+                    $sql = "SELECT * FROM emergency_reports ORDER BY submit_date DESC";
+                    $result = $conn->query($sql);
+
+                    if ($result->num_rows > 0) {
+                        while($row = $result->fetch_assoc()) {
+                            // Determine badge color based on status
+                            $status_class = 'badge-unread';
+                            if ($row['status'] == 'Read') $status_class = 'badge-read';
+                            if ($row['status'] == 'Pinned') $status_class = 'badge-pinned';
+
+                            echo "<tr>
+                                    <td><span class='badge {$status_class}'>" . $row["status"] . "</span></td>
+                                    <td>
+                                        <span class='badge badge-type'>" . htmlspecialchars($row["emergency_type"]) . "</span><br>
+                                        <small style='color: #7f1d1d; font-weight: bold; margin-top: 5px; display: inline-block;'>📍 " . htmlspecialchars($row["location"]) . "</small>
+                                    </td>
+                                    <td><strong>" . htmlspecialchars($row["reporter_name"]). "</strong></td>
+                                    <td>" . nl2br(htmlspecialchars($row["description"])). "</td>
+                                    <td style='white-space: nowrap; font-size: 13px; color: #718096;'>" . $row["submit_date"]. "</td>
+                                  </tr>";
+                        }
+                    } else {
+                        echo "<tr><td colspan='5' style='text-align: center; color: #276749; padding: 20px; background-color: #f0fff4;'>✅ All clear! No active emergencies reported in the area.</td></tr>";
+                    }
+                    ?>
+                </table>
+            </div>
+
+        <?php elseif ($page == 'team'): ?>
+            <div class="card">
+                <h1>Response Team Roster</h1>
+                <p>The following individuals are registered in the Neighbour's Call network system database.</p>
                 <table>
                     <tr>
                         <th>#</th>
-                        <th>NAME</th>
+                        <th>MEMBER NAME</th>
                         <th>REGISTRATION NUMBER</th>
                         <th>STUDENT NUMBER</th>
-                        <th>ROLE</th>
                     </tr>
                     <?php
-                    $sql = "SELECT * FROM group_members_v2";
+                    $sql = "SELECT * FROM neighbours_team";
                     $result = $conn->query($sql);
 
                     if ($result->num_rows > 0) {
                         while($row = $result->fetch_assoc()) {
                             echo "<tr>
                                     <td>" . $row["id"]. "</td>
-                                    <td><strong>" . htmlspecialchars($row["name"]). "</strong></td>
+                                    <td style='color: #991b1b;'><strong>" . htmlspecialchars($row["name"]). "</strong></td>
                                     <td>" . htmlspecialchars($row["reg_number"]). "</td>
                                     <td>" . htmlspecialchars($row["student_number"]). "</td>
-                                    <td><span class='role-badge'>" . htmlspecialchars($row["role"]). "</span></td>
                                   </tr>";
                         }
                     } else {
-                        echo "<tr><td colspan='5'>No members found</td></tr>";
-                    }
-                    ?>
-                </table>
-            </div>
-
-        <?php elseif ($page == 'messages'): ?>
-            <div class="card">
-                <h1>Inbox: Contact Form Submissions</h1>
-                <p>These messages are pulled dynamically from the <code>contact_messages</code> MySQL database table.</p>
-                <table>
-                    <tr>
-                        <th>Date & Time</th>
-                        <th>Sender Name</th>
-                        <th>Email Address</th>
-                        <th>Message Content</th>
-                    </tr>
-                    <?php
-                    // Fetch messages from newest to oldest
-                    $sql = "SELECT * FROM contact_messages ORDER BY submit_date DESC";
-                    $result = $conn->query($sql);
-
-                    if ($result->num_rows > 0) {
-                        while($row = $result->fetch_assoc()) {
-                            echo "<tr>
-                                    <td style='white-space: nowrap; font-size: 13px; color: #718096;'>" . $row["submit_date"]. "</td>
-                                    <td><strong>" . htmlspecialchars($row["name"]). "</strong></td>
-                                    <td><a href='mailto:" . htmlspecialchars($row["email"]) . "' style='color: #2b6cb0; text-decoration: none;'>" . htmlspecialchars($row["email"]). "</a></td>
-                                    <td>" . nl2br(htmlspecialchars($row["message"])). "</td>
-                                  </tr>";
-                        }
-                    } else {
-                        echo "<tr><td colspan='4' style='text-align: center; color: #718096; padding: 20px;'>No messages found yet. Go to the Home tab and submit the form!</td></tr>";
+                        echo "<tr><td colspan='4'>No team members found</td></tr>";
                     }
                     ?>
                 </table>
